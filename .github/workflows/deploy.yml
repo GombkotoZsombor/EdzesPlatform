@@ -23,7 +23,7 @@ jobs:
     # Blazor WASM publikálása
     - name: Publish .NET Core Project
       # Ha a csproj fájlod nem az EdzesPlatform mappában van, töröld ki az "EdzesPlatform/" részt!
-      run: dotnet publish EdzesPlatform/EdzesPlatform.csproj -c Release -o release --nologo
+      run: dotnet publish EdzesPlatform.csproj -c Release -o release --nologo
 
     # 404 hiba javítása (GitHub Pages trükk Blazorhoz)
     # Lemásoljuk az index.html-t 404.html-re, hogy a frissítéskor ne dobjon hibát
