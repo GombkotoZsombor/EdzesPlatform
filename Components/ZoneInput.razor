@@ -1,0 +1,38 @@
+﻿@using EdzesPlatform.Models
+
+<div class="card mb-3 border-secondary">
+    <div class="card-header text-white bg-dark d-flex justify-content-between">
+        <span>@Title</span>
+        <i class="bi bi-speedometer2 text-muted"></i>
+    </div>
+    <div class="card-body bg-dark text-white">
+        <div class="row g-2">
+            <div class="col-6">
+                <label class="small text-muted mb-1">Watt (Min-Max)</label>
+                <div class="input-group input-group-sm">
+                    <input type="number" class="form-control bg-secondary text-white border-0"
+                           @bind="Limits.PowerMin" placeholder="Min" />
+                    <span class="input-group-text bg-dark text-muted border-secondary">-</span>
+                    <input type="number" class="form-control bg-secondary text-white border-0"
+                           @bind="Limits.PowerMax" placeholder="Max" />
+                </div>
+            </div>
+
+            <div class="col-6">
+                <label class="small text-muted mb-1">Pulzus (Min-Max)</label>
+                <div class="input-group input-group-sm">
+                    <input type="number" class="form-control bg-secondary text-white border-0"
+                           @bind="Limits.HrMin" placeholder="Min" />
+                    <span class="input-group-text bg-dark text-muted border-secondary">-</span>
+                    <input type="number" class="form-control bg-secondary text-white border-0"
+                           @bind="Limits.HrMax" placeholder="Max" />
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; } = "Zóna";
+    [Parameter] public ZoneLimits Limits { get; set; } = new();
+}

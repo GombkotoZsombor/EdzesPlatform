@@ -1,0 +1,19 @@
+﻿@inherits LayoutComponentBase
+
+<div class="page">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <main>
+        <div class="top-row px-4 d-flex justify-content-end align-items-center"
+             style="background-color: #1e1e1e; border-bottom: 1px solid #333;">
+            
+            <a href="https://intervals.icu" target="_blank" class="btn btn-sm btn-outline-secondary"  >Intervals</a>
+        </div>
+
+        <article class="content px-4 py-4">
+            @Body
+        </article>
+    </main>
+</div>

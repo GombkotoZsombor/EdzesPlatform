@@ -1,0 +1,122 @@
+﻿@page "/profiles"
+@using EdzesPlatform.Models
+@using EdzesPlatform.Services
+@inject DataService Data
+@inject NavigationManager Nav
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3><i class="bi bi-people-fill"></i> Sportoló Profilok</h3>
+    </div>
+
+    <div class="card p-3 mb-4 bg-light">
+        <h5>Új sportoló hozzáadása</h5>
+        <div class="row g-2 align-items-end">
+            <div class="col-md-5">
+                <label>Név</label>
+                <input @bind="newName" class="form-control" placeholder="pl. Apa" />
+            </div>
+            <div class="col-md-4">
+                <label>Születési dátum (opcionális)</label>
+                <input type="date" @bind="newBirthDate" class="form-control" />
+            </div>
+            <div class="col-md-3">
+                <button @onclick="CreateProfile" class="btn btn-success w-100" disabled="@string.IsNullOrWhiteSpace(newName)">
+                    Létrehozás
+                </button>
+            </div>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <p>Betöltés...</p>
+    }
+    else if (profiles.Count == 0)
+    {
+        <div class="alert alert-warning">Még nincs profil létrehozva. Vegyél fel egyet fent!</div>
+    }
+    else
+    {
+        <div class="row">
+            @foreach (var p in profiles)
+            {
+                <div class="col-md-6 col-lg-4 mb-3">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+                            <h4 class="card-title text-primary">@p.Name</h4>
+                            <p class="text-muted small">
+                                @(p.BirthDate.HasValue ? $"{p.BirthDate.Value:yyyy.MM.dd}" : "Nincs születési dátum")
+                            </p>
+
+                            <hr />
+
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-outline-primary" @onclick="() => OpenZones(p.Id)">
+                                    <i class="bi bi-speedometer2"></i> Zónák kezelése
+                                </button>
+
+                                <button class="btn btn-outline-danger btn-sm" @onclick="() => DeleteProfile(p)">
+                                    Törlés
+                                </button>
+                                <button class="btn btn-primary mb-2" @onclick="() => OpenCalendar(p.Id)">
+                                    <i class="bi bi-calendar-week"></i> Naptár Megnyitása
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<AthleteProfile> profiles = new();
+    private bool isLoading = true;
+
+    // Űrlap adatok
+    private string newName = "";
+    private DateTime? newBirthDate;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+        profiles = await Data.GetProfilesAsync();
+        isLoading = false;
+    }
+
+    private async Task CreateProfile()
+    {
+        if (string.IsNullOrWhiteSpace(newName)) return;
+
+        await Data.CreateProfileAsync(newName, newBirthDate);
+
+        // Mezők ürítése és lista frissítése
+        newName = "";
+        newBirthDate = null;
+        await LoadData();
+    }
+
+    private async Task DeleteProfile(AthleteProfile p)
+    {
+        // Itt jó lenne egy megerősítés, de most egyszerűsítünk
+        await Data.DeleteProfileAsync(p.Id);
+        await LoadData();
+    }
+
+    private void OpenZones(string profileId)
+    {
+        // Navigálás a zóna szerkesztőre (következő lépés lesz)
+        Nav.NavigateTo($"/zones/{profileId}");
+    }
+    private void OpenCalendar(string profileId)
+    {
+        Nav.NavigateTo($"/calendar/{profileId}");
+    }
+}

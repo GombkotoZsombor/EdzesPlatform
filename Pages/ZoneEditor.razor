@@ -1,0 +1,95 @@
+﻿@page "/zones/{ProfileId}"
+@using EdzesPlatform.Models
+@using EdzesPlatform.Services
+@using EdzesPlatform.Components
+@inject DataService Data
+@inject NavigationManager Nav
+
+<div class="container mt-4 pb-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3><i class="bi bi-sliders"></i> Zónák Beállítása</h3>
+        <button class="btn btn-outline-secondary btn-sm" @onclick="GoBack">Vissza</button>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="d-flex justify-content-center">
+            <div class="spinner-border text-primary" role="status"></div>
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            <div class="col-md-6">
+                <h5 class="text-primary mb-3">Alapozó Zónák</h5>
+                <ZoneInput Title="KB (Regeneráló)" Limits="currentSnapshot.KB" />
+                <ZoneInput Title="GA1 (Aerob extenzív)" Limits="currentSnapshot.GA1" />
+                <ZoneInput Title="GA2 (Aerob intenzív)" Limits="currentSnapshot.GA2" />
+                <ZoneInput Title="K3 (Erőállóképesség / SFR)" Limits="currentSnapshot.K3" />
+            </div>
+
+            <div class="col-md-6">
+                <h5 class="text-danger mb-3">Intenzív Zónák</h5>
+                <ZoneInput Title="EB (Extenzív résztáv)" Limits="currentSnapshot.EB" />
+                <ZoneInput Title="VO2 (Intenzív résztáv)" Limits="currentSnapshot.VO2" />
+                <ZoneInput Title="SB (Sprint / Anaerob)" Limits="currentSnapshot.SB" />
+            </div>
+        </div>
+
+        <div class="card mt-4 border-success">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                    <label class="fw-bold text-white me-2">Érvényesség kezdete:</label>
+                    <input type="date" @bind="validFromDate" class="form-control d-inline-block w-auto bg-dark text-white border-secondary" />
+                    <div class="form-text text-muted">Mikortól érvényes ez a mérés?</div>
+                </div>
+                <button class="btn btn-success btn-lg px-4" @onclick="SaveZones">
+                    <i class="bi bi-save me-2"></i> Mentés
+                </button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string ProfileId { get; set; } = "";
+
+    private bool isLoading = true;
+    private ZoneSnapshotData currentSnapshot = new();
+    private DateTime validFromDate = DateTime.Today;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // 1. Betöltjük a profil korábbi méréseit
+        var history = await Data.GetZoneHistoryForProfileAsync(ProfileId);
+
+        if (history.Any())
+        {
+            // Ha van régi adat, lemásoljuk a legfrissebbet, hogy ne kelljen mindent újra beírni.
+            // JSON trükk a tiszta másoláshoz (Deep Copy):
+            var lastData = history.First().ZonesData;
+            var json = Newtonsoft.Json.JsonConvert.SerializeObject(lastData);
+            currentSnapshot = Newtonsoft.Json.JsonConvert.DeserializeObject<ZoneSnapshotData>(json)!;
+        }
+
+        isLoading = false;
+    }
+
+    private async Task SaveZones()
+    {
+        // Új bejegyzést hozunk létre (sosem írunk felül, mindig újat mentünk!)
+        var newEntry = new ZoneHistory
+        {
+            ProfileId = ProfileId,
+            ValidFrom = validFromDate, // A felhasználó által választott dátum
+            ZonesData = currentSnapshot
+        };
+
+        await Data.AddZoneSnapshotAsync(newEntry);
+
+        // Visszavisz a profilokhoz
+        Nav.NavigateTo("/profiles");
+    }
+
+    private void GoBack() => Nav.NavigateTo("/profiles");
+}

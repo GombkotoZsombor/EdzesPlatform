@@ -1,0 +1,634 @@
+﻿@page "/calendar/{ProfileId}"
+@using EdzesPlatform.Models
+@using EdzesPlatform.Services
+@using System.Globalization
+@inject DataService Data
+@inject NavigationManager Nav
+@inject IConfiguration Config
+
+<div class="container-fluid mt-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary btn-sm" @onclick="GoBack">
+                <i class="bi bi-arrow-left"></i> Profilok
+            </button>
+            <div class="btn-group btn-group-sm">
+                <button class="btn @(currentView == CalendarView.Month ? "btn-primary" : "btn-outline-secondary")"
+                        @onclick="() => ChangeView(CalendarView.Month)">
+                    Havi
+                </button>
+                <button class="btn @(currentView == CalendarView.Week ? "btn-primary" : "btn-outline-secondary")"
+                        @onclick="() => ChangeView(CalendarView.Week)">
+                    Heti
+                </button>
+                <div class="dropdown">
+                    <button class="btn btn-outline-success btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" @onclick="ToggleExportMenu">
+                        <i class="bi bi-file-earmark-spreadsheet"></i>Export
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-dark @(isExportMenuOpen ? "show" : "")" style="position: absolute; z-index: 1050;">
+                        <li>
+                            <button class="dropdown-item" @onclick="ExportCurrentView">
+                                <i class="bi bi-eye"></i> Jelenlegi nézet (@GetTitle())
+                            </button>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <button class="dropdown-item" @onclick="() => showDateRangeModal = true">
+                                <i class="bi bi-calendar-range"></i> Egyéni időszak...
+                            </button>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <button class="dropdown-item text-warning" @onclick="ShowSyncModal">
+                                <i class="bi bi-rss"></i> Naptár Szinkron (ICS)
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex align-items-center gap-3">
+            <button class="btn btn-outline-light btn-sm" @onclick="PrevStep"><i class="bi bi-chevron-left"></i></button>
+            <h4 class="text-white text-uppercase m-0 user-select-none text-center" style="min-width: 200px;">
+                @GetTitle()
+            </h4>
+            <button class="btn btn-outline-light btn-sm" @onclick="NextStep"><i class="bi bi-chevron-right"></i></button>
+        </div>
+
+        <div style="width: 100px;"></div>
+    </div>
+
+    <div class="calendar-grid @(currentView == CalendarView.Week ? "week-view" : "month-view")">
+        <div class="day-header small">#</div>
+        <div class="day-header">Hét</div>
+        <div class="day-header">Kedd</div>
+        <div class="day-header">Sze</div>
+        <div class="day-header">Csüt</div>
+        <div class="day-header">Pén</div>
+        <div class="day-header">Szom</div>
+        <div class="day-header">Vas</div>
+
+        @foreach (var dayDate in visibleDays)
+        {
+            // Hét sorszáma a sor elején
+            if (dayDate.DayOfWeek == DayOfWeek.Monday || dayDate == visibleDays.First())
+            {
+                <div class="week-number-cell">
+                    @GetIsoWeekOfYear(dayDate).ToString()
+                </div>
+            }
+
+            bool isCurrentMonth = currentView == CalendarView.Week || dayDate.Month == referenceDate.Month;
+            var dayWorkouts = workouts.Where(w => w.Date.Date == dayDate).ToList();
+            bool isToday = dayDate == DateTime.Today;
+            bool isSelected = selectedDate.HasValue && selectedDate.Value.Date == dayDate;
+
+            <div class="calendar-day @(isToday ? "today" : "") @(isSelected ? "selected-day" : "") @(!isCurrentMonth ? "other-month" : "")"
+                 @onclick="() => SelectDate(dayDate)">
+
+                <div class="day-number">
+                    @dayDate.Day
+                    @if (currentView == CalendarView.Week)
+                    {
+                        <span class="small text-muted ms-1">@dayDate.ToString("MMM")</span>
+                    }
+                </div>
+
+                <div class="workouts-container">
+                    @foreach (var w in dayWorkouts)
+                    {
+                        <div class="workout-badge @(w.Status == "done" ? "done" : "planned")"
+                             @onclick:stopPropagation="true"
+                             @onclick="() => OpenWorkout(w.Id)">
+
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <div class="text-truncate fw-bold" style="max-width: 85%;">@w.Title</div>
+                                @if (!string.IsNullOrWhiteSpace(w.Description))
+                                {
+                                    <i class="bi bi-chat-square-text-fill text-info small" title="@w.Description"></i>
+                                }
+                            </div>
+
+                            @if (w.Steps.Any())
+                            {
+                                <div class="workout-steps-list">
+                                    @foreach (var step in w.Steps)
+                                    {
+                                        <div class="d-flex gap-1 align-items-center" style="line-height: 1.2;">
+                                            <span style="width: 6px; height: 6px; border-radius: 50%; background-color: @GetZoneColor(step.Zone); display: inline-block; flex-shrink: 0;"></span>
+                                            <span class="text-truncate">@GetStepSummary(step)</span>
+                                        </div>
+                                    }
+                                </div>
+                            }
+
+                            @if (w.Status == "done" || w.Rpe.HasValue || !string.IsNullOrEmpty(w.Feeling))
+                            {
+                                <div class="d-flex justify-content-between align-items-center mt-2 pt-1 border-top border-secondary opacity-75">
+
+                                    @if (w.Rpe.HasValue)
+                                    {
+                                        <div class="rpe-badge @GetRpeColor(w.Rpe.Value)">
+                                            <span class="small fw-bold">RPE @w.Rpe</span>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div></div>
+                                    }
+
+                                    @if (!string.IsNullOrEmpty(w.Feeling))
+                                    {
+                                        <div style="font-size: 1.1rem; line-height: 1;">
+                                            @GetFeelingEmoji(w.Feeling)
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+                @if (showDateRangeModal)
+                {
+                    <div class="modal-backdrop fade show"></div>
+                    <div class="modal fade show d-block" tabindex="-1">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content bg-dark text-white border-secondary">
+                                <div class="modal-header border-secondary">
+                                    <h5 class="modal-title">Exportálás időszaka</h5>
+                                    <button type="button" class="btn-close btn-close-white" @onclick="() => showDateRangeModal = false"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="mb-3">
+                                        <label class="form-label text-muted small">Kezdő dátum</label>
+                                        <input type="date" class="form-control bg-secondary text-white border-0" @bind="exportStart" />
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label text-muted small">Vég dátum</label>
+                                        <input type="date" class="form-control bg-secondary text-white border-0" @bind="exportEnd" />
+                                    </div>
+                                </div>
+                                <div class="modal-footer border-secondary">
+                                    <button type="button" class="btn btn-secondary" @onclick="() => showDateRangeModal = false">Mégse</button>
+                                    <button type="button" class="btn btn-success" @onclick="ExportCustomRange">Letöltés (.csv)</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+                @if (showSyncModal)
+                {
+                    <div class="modal-backdrop fade show"></div>
+                    <div class="modal fade show d-block" tabindex="-1">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content bg-dark text-white border-secondary">
+                                <div class="modal-header border-secondary">
+                                    <h5 class="modal-title"><i class="bi bi-rss"></i> Naptár Szinkronizálás</h5>
+                                    <button type="button" class="btn-close btn-close-white" @onclick="() => showSyncModal = false"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p class="small text-muted mb-2">
+                                        Válaszd ki, hogy mi alapján szeretnéd vezérelni az edzést:
+                                    </p>
+
+                                    <div class="btn-group w-100 mb-4" role="group">
+                                        <button type="button" class="btn @(syncType == "hr" ? "btn-primary" : "btn-outline-secondary")"
+                                                @onclick='() => syncType = "hr"'>
+                                            <i class="bi bi-heart-pulse"></i> Pulzus alapú
+                                        </button>
+                                        <button type="button" class="btn @(syncType == "power" ? "btn-primary" : "btn-outline-secondary")"
+                                                @onclick='() => syncType = "power"'>
+                                            <i class="bi bi-lightning-charge"></i> Watt alapú
+                                        </button>
+                                    </div>
+
+                                    <p class="small text-muted">
+                                        Másold be ezt a linket az <strong>Intervals.icu</strong> (Settings -> Calendars) felületére.
+                                    </p>
+
+                                    <div class="input-group mb-3">
+                                        <input type="text" class="form-control bg-secondary text-white border-0" value="@GetIcsLink()" readonly />
+                                        <button class="btn btn-primary" @onclick="CopyIcsLink">
+                                            <i class="bi bi-clipboard"></i> Másolás
+                                        </button>
+                                    </div>
+
+                                    <div class="alert alert-info small bg-secondary border-0 text-white">
+                                        <i class="bi bi-info-circle"></i> A frissítés nem azonnali (az Intervals.icu pár óránként frissít).
+                                    </div>
+                                </div>
+                                <div class="modal-footer border-secondary">
+                                    <button type="button" class="btn btn-secondary" @onclick="() => showSyncModal = false">Bezárás</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                @if (isSelected)
+                {
+                    <div class="mt-auto text-center pt-2">
+                        <button class="btn btn-success btn-sm w-100 py-0" style="font-size: 0.8rem;"
+                                @onclick:stopPropagation="true"
+                                @onclick="CreateNewWorkout">
+                            <i class="bi bi-plus-lg"></i> Új
+                        </button>
+                    </div>
+                }
+                else if (isCurrentMonth && currentView == CalendarView.Month)
+                {
+                    <div class="add-icon text-center mt-auto text-muted opacity-25">
+                        <i class="bi bi-plus-circle"></i>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    /* RÁCS ÉS ALAPOK */
+    .calendar-grid {
+        display: grid;
+        grid-template-columns: 30px repeat(7, 1fr);
+        gap: 6px;
+    }
+
+    .day-header {
+        text-align: center;
+        font-weight: bold;
+        color: #888;
+        padding: 5px;
+        text-transform: uppercase;
+        font-size: 0.8rem;
+    }
+
+    .week-number-cell {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+        color: #666;
+        background-color: transparent;
+        border-right: 1px solid #333;
+        writing-mode: vertical-lr;
+        transform: rotate(180deg);
+    }
+
+    .week-view .week-number-cell {
+        writing-mode: horizontal-tb;
+        transform: none;
+        font-size: 1rem;
+        font-weight: bold;
+    }
+
+    .calendar-day {
+        background-color: #1e1e1e;
+        border: 1px solid #333;
+        border-radius: 6px;
+        padding: 6px;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        transition: all 0.2s;
+        min-height: 120px;
+    }
+
+    .week-view .calendar-day {
+        min-height: 400px;
+    }
+
+    .calendar-day:hover {
+        background-color: #252525;
+        border-color: #555;
+    }
+
+    .calendar-day.other-month {
+        background-color: #121212;
+        opacity: 0.5;
+        border: 1px dashed #333;
+    }
+
+    .calendar-day.today {
+        background-color: rgba(13, 110, 253, 0.05);
+    }
+
+    .calendar-day.selected-day {
+        border: 2px solid #00ff88 !important;
+        background-color: rgba(0, 255, 136, 0.05);
+        box-shadow: 0 0 10px rgba(0, 255, 136, 0.1);
+    }
+
+    /* EDZÉS KÁRTYA STÍLUS */
+    .workout-badge {
+        padding: 6px 8px;
+        margin-bottom: 4px;
+        border-radius: 4px;
+        font-size: 0.85rem;
+        cursor: pointer;
+        border-left: 3px solid;
+        background-color: #2c3035;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        overflow: hidden;
+    }
+
+        .workout-badge.planned {
+            border-left-color: #0d6efd;
+            color: white;
+        }
+
+        .workout-badge.done {
+            background-color: #1a3b2a;
+            border-left-color: #00ff88;
+            color: white;
+        }
+
+        .workout-badge:hover {
+            filter: brightness(1.2);
+        }
+
+    .workout-steps-list {
+        font-size: 0.75rem;
+        color: #ccc;
+        margin-top: 4px;
+        padding-top: 2px;
+    }
+
+    /* RPE BADGE STÍLUS */
+    .rpe-badge {
+        font-size: 0.7rem;
+        padding: 1px 6px;
+        border-radius: 10px;
+        background: rgba(0,0,0,0.3);
+        border: 1px solid;
+        display: inline-block;
+    }
+</style>
+
+@code {
+    [Parameter] public string ProfileId { get; set; } = "";
+
+    enum CalendarView { Month, Week }
+    private CalendarView currentView = CalendarView.Month;
+    private DateTime referenceDate = DateTime.Today;
+    private List<DateTime> visibleDays = new();
+    private List<Workout> workouts = new();
+    private DateTime? selectedDate = null;
+    @inject WorkoutExportService Exporter
+
+    @inject IJSRuntime JSRuntime
+    private bool isExportMenuOpen = false;
+    private bool showDateRangeModal = false;
+    private DateTime exportStart = DateTime.Today.AddMonths(-1); // Alapértelmezett: 1 hónap
+    private DateTime exportEnd = DateTime.Today;
+
+    private void ToggleExportMenu() => isExportMenuOpen = !isExportMenuOpen;
+    // --- ICS SZINKRON LOGIKA ---
+   
+    private bool showSyncModal = false;
+    private string syncType = "hr";
+
+    private void ShowSyncModal()
+    {
+        showSyncModal = true;
+        isExportMenuOpen = false; // Bezárjuk a lenyíló menüt
+    }
+
+    private string GetIcsLink()
+    {
+        var baseUrl = Config["SupabaseUrl"];
+        // ÚJ: Hozzáfűzzük a &type= paramétert
+        return $"{baseUrl}/functions/v1/serve-ics?id={ProfileId}&type={syncType}";
+    }
+
+    private async Task CopyIcsLink()
+    {
+        var link = GetIcsLink();
+        await JSRuntime.InvokeVoidAsync("copyToClipboard", link); // A már meglévő másoló függvényedet használjuk [cite: 537]
+        await JSRuntime.InvokeVoidAsync("alert", "Link vágólapra másolva!");
+    }
+
+    // 1. OPCIÓ: Jelenlegi nézet exportálása
+    private async Task ExportCurrentView()
+    {
+        isExportMenuOpen = false;
+        //A visibleDays lista már ki van számolva a naptárhoz [cite: 1057]
+        if (!visibleDays.Any()) return;
+
+        var start = visibleDays.First();
+        var end = visibleDays.Last();
+
+        // Újra lekérjük, vagy használhatjuk a 'workouts' listát is, ha az biztosan teljes
+        await PerformExport(start, end, $"Edzesek_{GetTitle().Replace(" ", "_")}.csv");
+    }
+
+    // 2. OPCIÓ: Egyéni időszak exportálása (A Modal Gombja hívja)
+    private async Task ExportCustomRange()
+    {
+        showDateRangeModal = false;
+        isExportMenuOpen = false;
+
+        string fileName = $"Edzesek_{exportStart:yyyyMMdd}-{exportEnd:yyyyMMdd}.csv";
+        await PerformExport(exportStart, exportEnd, fileName);
+    }
+
+    // KÖZÖS SEGÉDFÜGGVÉNY
+    private async Task PerformExport(DateTime start, DateTime end, string fileName)
+    {
+        // Adatok lekérése a DataService segítségével [cite: 340]
+        var dataToExport = await Data.GetWorkoutsAsync(ProfileId, start, end);
+
+        if (!dataToExport.Any())
+        {
+            await JSRuntime.InvokeVoidAsync("alert", "Nincs edzés a kiválasztott időszakban!");
+            return;
+        }
+
+        // CSV generálás (az előző válaszban írt metódussal)
+        var csvBytes = Exporter.GenerateCsvExport(dataToExport);
+        var base64 = Convert.ToBase64String(csvBytes);
+
+        // Letöltés indítása
+        await JSRuntime.InvokeVoidAsync("downloadFileFromBase64", fileName, base64, "text/csv");
+    }
+
+    private async Task ExportCurrentViewToCsv()
+    {
+        // A jelenleg látható edzéseket (workouts lista) használjuk, amit a LoadCalendarData már betöltött [cite: 1113]
+        if (workouts == null || !workouts.Any())
+        {
+            await JSRuntime.InvokeVoidAsync("alert", "Nincs mit exportálni ebben a nézetben.");
+            return;
+        }
+
+        var csvBytes = Exporter.GenerateCsvExport(workouts);
+
+        // Fájlnév: pl. Edzesek_2025_Januar.csv
+        string fileName = $"Edzesek_{GetTitle().Replace(" ", "_").Replace(".", "")}.csv";
+
+        // A meglévő JS letöltő függvényed hívása, de most byte tömbbel
+        // (Ezt a JS függvényt kicsit módosítani kell, vagy base64-re alakítani C#-ban)
+        var base64 = Convert.ToBase64String(csvBytes);
+        await JSRuntime.InvokeVoidAsync("downloadFileFromBase64", fileName, base64, "text/csv");
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        referenceDate = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+        await LoadCalendarData();
+    }
+
+    private async Task ChangeView(CalendarView view)
+    {
+        currentView = view;
+        await LoadCalendarData();
+    }
+
+    private string GetTitle()
+    {
+        if (currentView == CalendarView.Month)
+            return referenceDate.ToString("yyyy. MMMM", new CultureInfo("hu-HU"));
+        else
+        {
+            var start = visibleDays.First();
+            var end = visibleDays.Last();
+            return start.Month == end.Month ? $"{start:MMMM d.} - {end:dd.}" : $"{start:MMM d.} - {end:MMM d.}";
+        }
+    }
+
+    private int GetIsoWeekOfYear(DateTime time)
+    {
+        DayOfWeek day = CultureInfo.InvariantCulture.Calendar.GetDayOfWeek(time);
+        if (day >= DayOfWeek.Monday && day <= DayOfWeek.Wednesday)
+        {
+            time = time.AddDays(3);
+        }
+        return CultureInfo.InvariantCulture.Calendar.GetWeekOfYear(time, CalendarWeekRule.FirstFourDayWeek, DayOfWeek.Monday);
+    }
+
+    private async Task LoadCalendarData()
+    {
+        visibleDays.Clear();
+        DateTime queryStart, queryEnd;
+
+        if (currentView == CalendarView.Month)
+        {
+            referenceDate = new DateTime(referenceDate.Year, referenceDate.Month, 1);
+            var firstDayOfMonth = referenceDate;
+            int diff = (7 + (firstDayOfMonth.DayOfWeek - DayOfWeek.Monday)) % 7;
+            var gridStartDate = firstDayOfMonth.AddDays(-1 * diff);
+
+            for (int i = 0; i < 42; i++)
+            {
+                visibleDays.Add(gridStartDate.AddDays(i));
+            }
+        }
+        else
+        {
+            int diff = (7 + (referenceDate.DayOfWeek - DayOfWeek.Monday)) % 7;
+            var monday = referenceDate.AddDays(-1 * diff).Date;
+            for (int i = 0; i < 7; i++) visibleDays.Add(monday.AddDays(i));
+        }
+
+        queryStart = visibleDays.First();
+        queryEnd = visibleDays.Last();
+
+        workouts = await Data.GetWorkoutsAsync(ProfileId, queryStart, queryEnd);
+    }
+
+    private async Task NextStep()
+    {
+        referenceDate = currentView == CalendarView.Month ? referenceDate.AddMonths(1) : referenceDate.AddDays(7);
+        await LoadCalendarData();
+    }
+
+    private async Task PrevStep()
+    {
+        referenceDate = currentView == CalendarView.Month ? referenceDate.AddMonths(-1) : referenceDate.AddDays(-7);
+        await LoadCalendarData();
+    }
+
+    private void SelectDate(DateTime date)
+    {
+        selectedDate = date;
+    }
+
+    private async Task CreateNewWorkout()
+    {
+        if (selectedDate.HasValue)
+        {
+            await Data.CreateEmptyWorkoutAsync(ProfileId, selectedDate.Value);
+            await LoadCalendarData();
+        }
+    }
+
+    private void OpenWorkout(string workoutId)
+    {
+        Nav.NavigateTo($"/workout-editor/{workoutId}");
+    }
+
+    private void GoBack() => Nav.NavigateTo("/profiles");
+
+    // --- MEGJELENÍTÉS HELPEREK ---
+
+    private string GetStepSummary(WorkoutStep step)
+    {
+        string duration = FormatTime(step.DurationSeconds);
+        if (step.Type == "Intervals")
+        {
+            return $"{step.RepeatCount}x {duration} {step.Zone}";
+        }
+        else
+        {
+            return $"{duration} {step.Zone}";
+        }
+    }
+
+    private string FormatTime(int seconds)
+    {
+        var ts = TimeSpan.FromSeconds(seconds);
+        if (ts.TotalMinutes >= 60 && ts.Minutes == 0 && ts.Seconds == 0) return $"{ts.Hours}ó";
+        if (ts.TotalMinutes < 1) return $"{ts.Seconds}mp";
+        if (ts.Seconds == 0) return $"{ts.TotalMinutes}p";
+        return $"{Math.Floor(ts.TotalMinutes)}p {ts.Seconds}mp";
+    }
+
+    private string GetZoneColor(string zone)
+    {
+        return zone switch
+        {
+            "KB" => "#808080",
+            "GA1" => "#0d6efd",
+            "GA2" => "#198754",
+            "EB" => "#ffc107",
+            "VO2" => "#fd7e14",
+            "SB" => "#dc3545",
+            "K3" => "#6f42c1",
+            _ => "#ffffff"
+        };
+    }
+
+    // ÚJ: Emoji konvertáló
+    private string GetFeelingEmoji(string? feelingKey)
+    {
+        if (string.IsNullOrEmpty(feelingKey)) return "";
+        return feelingKey switch
+        {
+            "terrible" => "🤮",
+            "bad" => "😫",
+            "neutral" => "😐",
+            "good" => "🙂",
+            "excellent" => "🤩",
+            _ => "" // Ismeretlen kulcs esetén
+        };
+    }
+
+    // ÚJ: RPE Színkódoló
+    private string GetRpeColor(int rpe)
+    {
+        if (rpe <= 4) return "text-success border-success"; // Zöld
+        if (rpe <= 7) return "text-warning border-warning"; // Sárga
+        return "text-danger border-danger"; // Piros
+    }
+}
