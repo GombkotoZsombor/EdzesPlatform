@@ -1,0 +1,42 @@
+name: Deploy to GitHub Pages
+
+# Akkor fut le, ha a 'main' ágra pusholsz
+on:
+  push:
+    branches: [ "main" ]
+
+permissions:
+  contents: write
+
+jobs:
+  deploy-to-github-pages:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    # .NET telepítése a szerverre
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '8.0.x'
+
+    # Blazor WASM publikálása
+    - name: Publish .NET Core Project
+      # Ha a csproj fájlod nem az EdzesPlatform mappában van, töröld ki az "EdzesPlatform/" részt!
+      run: dotnet publish EdzesPlatform/EdzesPlatform.csproj -c Release -o release --nologo
+
+    # 404 hiba javítása (GitHub Pages trükk Blazorhoz)
+    # Lemásoljuk az index.html-t 404.html-re, hogy a frissítéskor ne dobjon hibát
+    - name: Fix 404 for GitHub Pages
+      run: cp release/wwwroot/index.html release/wwwroot/404.html
+
+    # .nojekyll fájl hozzáadása (hogy a _framework mappa betöltõdjön)
+    - name: Add .nojekyll file
+      run: touch release/wwwroot/.nojekyll
+
+    # Feltöltés a gh-pages ágra
+    - name: Commit wwwroot to GitHub Pages
+      uses: JamesIves/github-pages-deploy-action@v4
+      with:
+        branch: gh-pages
+        folder: release/wwwroot
