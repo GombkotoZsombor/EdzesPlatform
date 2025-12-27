@@ -1,0 +1,68 @@
+/* --- EDZÉS PLATFORM DARK THEME --- */
+:root {
+    --bg-dark: #121212; /* Fõ háttér: majdnem fekete */
+    --bg-card: #1e1e1e; /* Kártya háttér: sötétszürke */
+    --text-main: #e0e0e0; /* Szöveg: világosszürke */
+    --primary-color: #0d6efd; /* Kék gombok */
+    --accent-color: #00ff88; /* Neon zöld kiemelés */
+    --border-color: #333; /* Finom keretek */
+}
+
+body {
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* KÁRTYÁK */
+.card {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    border-radius: 12px;
+}
+
+/* BEVITELI MEZÕK SÖTÉTÍTÉSE */
+.form-control, .form-select {
+    background-color: #2d2d2d;
+    border: 1px solid #444;
+    color: white;
+}
+
+    .form-control:focus {
+        background-color: #333;
+        color: white;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+
+/* GOMBOK */
+.btn {
+    border-radius: 6px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 8px 16px;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    border: none;
+}
+
+.btn-success {
+    background-color: var(--accent-color);
+    color: black;
+    border: none;
+    font-weight: bold;
+}
+
+/* CÍMSOROK */
+h1, h2, h3, h4, h5 {
+    color: white;
+    font-weight: 700;
+}
+
+.text-muted {
+    color: #888 !important;
+}
