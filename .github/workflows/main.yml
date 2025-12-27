@@ -1,0 +1,46 @@
+name: Deploy to GitHub Pages
+
+# Akkor fut le, ha a main ágra pusholsz
+on:
+  push:
+    branches: [ "master" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  deploy-to-github-pages:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. Kicsekkolja a kódodat
+      - uses: actions/checkout@v3
+
+      # 2. Feltelepíti a .NET-et (Ha .NET 7-et használsz, írd át 7.0.x-re!)
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '8.0.x'
+
+      # 3. Lefordítja a kódot a 'release' mappába
+      - name: Publish with dotnet
+        run: dotnet publish -c Release -o release --nologo
+
+      # 4. Kicseréli a base href-et automatikusan (hogy ne kelljen kézzel átírnod)
+      # FIGYELEM: A 'EdzesPlatform' helyére a PONTOS repo nevedet írd!
+      - name: Change base tag in index.html from / to /EdzesPlatform/
+        run: sed -i 's/<base href="\/" \/>/<base href="\/EdzesPlatform\/" \/>/g' release/wwwroot/index.html
+
+      # 5. Létrehoz egy .nojekyll fájlt (hogy a _framework mappa mûködjön)
+      - name: Create .nojekyll
+        run: touch release/wwwroot/.nojekyll
+        
+      # 6. Létrehozza a 404.html-t az index.html másolataként (az újratöltés javítására)
+      - name: Copy index.html to 404.html
+        run: cp release/wwwroot/index.html release/wwwroot/404.html
+
+      # 7. Feltölti az egészet a gh-pages ágra (létrehozza, ha nincs)
+      - name: Commit wwwroot to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: release/wwwroot
