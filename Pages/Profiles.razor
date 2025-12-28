@@ -113,10 +113,10 @@
     private void OpenZones(string profileId)
     {
         // Navigálás a zóna szerkesztőre (következő lépés lesz)
-        Nav.NavigateTo($"zones{profileId}");
+        Nav.NavigateTo($"zones/{profileId}");
     }
     private void OpenCalendar(string profileId)
     {
-        Nav.NavigateTo($"calendar{profileId}");
+        Nav.NavigateTo($"calendar/{profileId}");
     }
 }
