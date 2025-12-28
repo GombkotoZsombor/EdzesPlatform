@@ -575,7 +575,7 @@
         }
     }
 
-    private void GoBack() => Nav.NavigateTo($"/calendar/{workout?.ProfileId}");
+    private void GoBack() => Nav.NavigateTo($"calendar/{workout?.ProfileId}");
 
     // Helpers
     private string FormatTime(int s) => (s % 60 == 0) ? $"{s / 60}p" : $"{s / 60}p {s % 60}mp";
