@@ -565,10 +565,10 @@
 
     private void OpenWorkout(string workoutId)
     {
-        Nav.NavigateTo($"/workout-editor/{workoutId}");
+        Nav.NavigateTo($"workout-editor{workoutId}");
     }
 
-    private void GoBack() => Nav.NavigateTo("/profiles");
+    private void GoBack() => Nav.NavigateTo("profiles");
 
     // --- MEGJELENÍTÉS HELPEREK ---
 
