@@ -91,11 +91,19 @@
         isLoading = false;
     }
 
-    private async Task CreateProfile()
+   private async Task CreateProfile()
     {
         if (string.IsNullOrWhiteSpace(newName)) return;
 
-        await Data.CreateProfileAsync(newName, newBirthDate);
+        // --- JAVÍTÁS KEZDETE ---
+        // Hozzáadunk 12 órát a kiválasztott dátumhoz, hogy elkerüljük az időzóna miatti napváltást.
+        // Pl. 00:00 -> 12:00. Ha ebből lejön 2 óra (UTC), akkor is marad az adott napon (10:00).
+        DateTime? adjustedDate = newBirthDate.HasValue 
+            ? newBirthDate.Value.Date.AddHours(12) 
+            : null;
+
+        await Data.CreateProfileAsync(newName, adjustedDate);
+        // --- JAVÍTÁS VÉGE ---
 
         // Mezők ürítése és lista frissítése
         newName = "";
