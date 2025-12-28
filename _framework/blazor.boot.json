@@ -1,7 +1,7 @@
 {
   "mainAssemblyName": "EdzesPlatform",
   "resources": {
-    "hash": "sha256-XU6WoweCgEPE3Xtg+3araXNTce76Q1jx8fRNJhcpMDY=",
+    "hash": "sha256-HY9OpFE24/nGTdtyVO7GAFCxxqhewjbvxTHj+Qn+3SI=",
     "jsModuleNative": {
       "dotnet.native.js": "sha256-vtotCeXt2UD6oc459laJT32vBgigZ+eLoUmdeFkvYDk="
     },
@@ -104,7 +104,7 @@
       "System.wasm": "sha256-I4hhyMuUoHdrzDopL9tlnkL/Skg+0OO+gmkOXNT3dcg=",
       "netstandard.wasm": "sha256-t3MI3G1cq2XOhj4SxHWG+1ZMvGILcE+Ck4NUy7FasYI=",
       "System.Private.CoreLib.wasm": "sha256-8GA/m+6c+5oPEzH/Vs4e6pLwOYD+Jy1pMg3kL/ryrxE=",
-      "EdzesPlatform.wasm": "sha256-nFP7KdrZCtx6vhy7wUlX0ZHCp7oHbqB3odEyRNnranU="
+      "EdzesPlatform.wasm": "sha256-gT6m3wXxnUHdaxO3izbDJby7iKf7Z5zWLvWJMPFheu0="
     }
   },
   "cacheBootResources": true,
